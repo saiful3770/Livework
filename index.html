@@ -3,198 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maintenance Live App</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>All-In-One Inventory System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+<body class="bg-slate-950 text-slate-200 p-4">
 
-    <div id="loginScreen" class="flex flex-col items-center justify-center min-h-screen p-4">
-        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl max-w-sm w-full border border-slate-700">
-            <h1 class="text-3xl font-bold mb-2 text-center flex items-center justify-center gap-2">
-                🔧 Maintenance
-            </h1>
-            <p class="text-slate-400 mb-6 text-sm text-center">অ্যাডমিন পাসকি দিয়ে লগইন করুন</p>
-            
-            <div class="mb-4">
-                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2 font-semibold">Admin Passkey</label>
-                <input type="password" id="adminKey" placeholder="গোপন পিন নম্বর দিন" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-blue-500 text-center text-lg tracking-widest">
-            </div>
-
-            <button onclick="checkAdminKey()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 shadow-lg flex items-center justify-center gap-2 cursor-pointer">
-                Log In
-            </button>
-            <p id="loginError" class="text-red-400 text-xs mt-3 text-center hidden">ভুল পাসকি! আবার চেষ্টা করুন।</p>
+<div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-blue-500 mb-8 text-center uppercase">Maintenance Store Inventory</h1>
+    
+    <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <input id="cat" placeholder="Category" class="bg-slate-800 p-3 rounded border border-slate-700">
+            <input id="desc" placeholder="Item Description" class="bg-slate-800 p-3 rounded border border-slate-700">
+            <input id="total" type="number" placeholder="Total Qty" class="bg-slate-800 p-3 rounded border border-slate-700">
+            <input id="used" type="number" placeholder="Used Qty" class="bg-slate-800 p-3 rounded border border-slate-700">
+            <input id="room" placeholder="Room No" class="bg-slate-800 p-3 rounded border border-slate-700">
         </div>
+        <button id="mainBtn" onclick="processData()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 py-3 rounded font-bold transition">Add Item</button>
     </div>
 
-    <div id="appScreen" class="hidden max-w-4xl mx-auto p-4 pb-12">
-        <header class="flex justify-between items-center my-6 bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div>
-                <h2 class="text-xl font-bold text-blue-400">Live Dashboard</h2>
-                <p class="text-xs text-green-400 flex items-center gap-1">● Admin Session Active</p>
-            </div>
-            <button onclick="logout()" class="bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs font-semibold py-2 px-4 rounded-lg transition border border-red-500/30 cursor-pointer">
-                Logout
-            </button>
-        </header>
-
-        <div class="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 mb-8">
-            <h3 class="text-lg font-semibold mb-4 text-slate-200">নতুন এন্ট্রি যোগ করুন</h3>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input type="text" id="roomNo" placeholder="রুম নম্বর (যেমন: 402)" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-blue-500">
-                <input type="text" id="itemName" placeholder="মালামালের নাম (যেমন: LED Light)" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-blue-500">
-                <input type="number" id="itemQty" placeholder="পরিমাণ (যেমন: 5)" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-blue-500">
-                <button onclick="addItem()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold p-3 rounded-xl transition cursor-pointer">
-                    Add Item
-                </button>
-            </div>
-        </div>
-
-        <div class="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 overflow-hidden">
-            <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
-                <h3 class="font-semibold text-slate-200">মেইনটেন্যান্স রেকর্ড লিস্ট (Live)</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-900/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
-                            <th class="p-4">Room No</th>
-                            <th class="p-4">Item Name</th>
-                            <th class="p-4">Quantity</th>
-                            <th class="p-4">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventoryTable" class="text-sm divide-y divide-slate-700/50">
-                        </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="bg-slate-900 rounded-2xl border border-slate-700 overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-slate-800 text-slate-400 text-xs uppercase">
+                <tr><th class="p-4">Category</th><th class="p-4">Item</th><th class="p-4">Total</th><th class="p-4">Used</th><th class="p-4">Balance</th><th class="p-4">Room</th><th class="p-4">Actions</th></tr>
+            </thead>
+            <tbody id="adminTable" class="divide-y divide-slate-800"></tbody>
+        </table>
     </div>
+</div>
 
-    <script>
-        // তোমার নতুন ফায়ারবেস কনফিগ এখানে যুক্ত করে দেওয়া হয়েছে
-        const firebaseConfig = {
-            apiKey: "AIzaSyAO0KQ1SiBbSn2zbEFCJB12G_gPyIkd4KQ",
-            authDomain: "livework-ab49e.firebaseapp.com",
-            databaseURL: "https://livework-ab49e-default-rtdb.firebaseio.com",
-            projectId: "livework-ab49e",
-            storageBucket: "livework-ab49e.firebasestorage.app",
-            messagingSenderId: "867860944613",
-            appId: "1:867860944613:web:5862be8910c4622a0a260c"
+<script>
+    // আপনার কনফিগ এখানে বসান
+    const firebaseConfig = {
+        apiKey: "AIzaSyAO0KQ1SiBbSn2zbEFCJB12G_gPyIkd4KQ",
+        authDomain: "livework-ab49e.firebaseapp.com",
+        databaseURL: "https://livework-ab49e-default-rtdb.firebaseio.com",
+        projectId: "livework-ab49e",
+        storageBucket: "livework-ab49e.firebasestorage.app",
+        messagingSenderId: "867860944613",
+        appId: "1:867860944613:web:5862be8910c4622a0a260c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let editKey = null;
+
+    db.ref('inventory').on('value', snapshot => {
+        const tbody = document.getElementById('adminTable');
+        tbody.innerHTML = '';
+        snapshot.forEach(child => {
+            const d = child.val();
+            const balance = d.total - d.used; // অটো ব্যালেন্স হিসাব
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-800/50">
+                    <td class="p-4">${d.category}</td>
+                    <td class="p-4 font-semibold">${d.description}</td>
+                    <td class="p-4">${d.total}</td>
+                    <td class="p-4">${d.used}</td>
+                    <td class="p-4 font-bold text-green-400">${balance}</td>
+                    <td class="p-4">${d.room}</td>
+                    <td class="p-4 flex gap-3">
+                        <button onclick="prepareEdit('${child.key}', '${d.category}', '${d.description}', ${d.total}, ${d.used}, '${d.room}')" class="text-blue-400 font-bold">Edit</button>
+                        <button onclick="deleteItem('${child.key}')" class="text-red-500 font-bold">Del</button>
+                    </td>
+                </tr>`;
+        });
+    });
+
+    function processData() {
+        const data = {
+            category: document.getElementById('cat').value,
+            description: document.getElementById('desc').value,
+            total: parseInt(document.getElementById('total').value),
+            used: parseInt(document.getElementById('used').value),
+            room: document.getElementById('room').value
         };
         
-        // Initialize Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+        if (editKey) {
+            db.ref('inventory/' + editKey).update(data);
+        } else {
+            db.ref('inventory').push(data);
         }
+        location.reload();
+    }
 
-        const db = firebase.database();
-        const CORRECT_PIN = "7700"; // তোমার গোপন পিন নম্বর
+    function prepareEdit(key, cat, desc, total, used, room) {
+        editKey = key;
+        document.getElementById('cat').value = cat;
+        document.getElementById('desc').value = desc;
+        document.getElementById('total').value = total;
+        document.getElementById('used').value = used;
+        document.getElementById('room').value = room;
+        document.getElementById('mainBtn').innerText = "Update Item";
+    }
 
-        // Check Login Session on Load
-        window.onload = function() {
-            if (localStorage.getItem("m_admin") === "true") {
-                showApp();
-            }
-        };
-
-        // Passkey Check Function
-        function checkAdminKey() {
-            const inputKey = document.getElementById('adminKey').value.trim();
-            const errorText = document.getElementById('loginError');
-
-            if (inputKey === CORRECT_PIN) {
-                localStorage.setItem("m_admin", "true");
-                errorText.classList.add('hidden');
-                showApp();
-            } else {
-                errorText.classList.remove('hidden');
-                document.getElementById('adminKey').value = '';
-            }
-        }
-
-        function showApp() {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('appScreen').classList.remove('hidden');
-            loadData();
-        }
-
-        // Logout
-        function logout() {
-            localStorage.removeItem("m_admin");
-            document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('appScreen').classList.add('hidden');
-            document.getElementById('adminKey').value = '';
-        }
-
-        // Add Data to Firebase Realtime Database
-        function addItem() {
-            const roomNo = document.getElementById('roomNo').value.trim();
-            const itemName = document.getElementById('itemName').value.trim();
-            const itemQty = document.getElementById('itemQty').value.trim();
-
-            if (!roomNo || !itemName || !itemQty) {
-                alert("দয়া করে সবকটি বক্স পূরণ করুন!");
-                return;
-            }
-
-            db.ref('records').push({
-                roomNo: roomNo,
-                itemName: itemName,
-                itemQty: parseInt(itemQty),
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
-                document.getElementById('roomNo').value = '';
-                document.getElementById('itemName').value = '';
-                document.getElementById('itemQty').value = '';
-            }).catch(error => {
-                alert("ডেটা সেভ করা যায়নি: " + error.message);
-            });
-        }
-
-        // Load Live Data from Firebase
-        function loadData() {
-            db.ref('records').on('value', snapshot => {
-                const tbody = document.getElementById('inventoryTable');
-                tbody.innerHTML = '';
-                
-                if (snapshot.exists()) {
-                    snapshot.forEach(childSnapshot => {
-                        const key = childSnapshot.key;
-                        const data = childSnapshot.val();
-                        
-                        const row = `
-                            <tr class="hover:bg-slate-800/50 transition">
-                                <td class="p-4 font-medium text-slate-200">${data.roomNo}</td>
-                                <td class="p-4 text-slate-300">${data.itemName}</td>
-                                <td class="p-4 text-slate-400">${data.itemQty}</td>
-                                <td class="p-4">
-                                    <button onclick="deleteItem('${key}')" class="text-red-400 hover:text-red-500 font-medium text-xs bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded transition">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                        tbody.innerHTML += row;
-                    });
-                } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="p-8 text-center text-slate-500">কোনো রেকর্ড খুঁজে পাওয়া যায়নি।</td>
-                        </tr>
-                    `;
-                }
-            });
-        }
-
-        // Delete Data
-        function deleteItem(key) {
-            if (confirm("আপনি কি নিশ্চিতভাবে এই রেকর্ডটি ডিলিট করতে চান?")) {
-                db.ref('records').child(key).remove();
-            }
-        }
-    </script>
+    function deleteItem(key) { if(confirm('Delete this item?')) db.ref('inventory/' + key).remove(); }
+</script>
 </body>
 </html>
