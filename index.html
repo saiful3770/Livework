@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All-In-One Inventory System</title>
+    <title>Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -11,8 +11,20 @@
 <body class="bg-slate-950 text-slate-200 p-4">
 
 <div class="max-w-6xl mx-auto">
-    <h1 class="text-3xl font-bold text-blue-500 mb-8 text-center uppercase">Maintenance Store Inventory</h1>
+    <h1 class="text-3xl font-bold text-blue-500 mb-8 text-center uppercase">Maintenance Store Admin</h1>
     
+    <div class="mb-10">
+        <h2 class="text-xl font-bold text-emerald-400 mb-4">Latest Usage History</h2>
+        <div class="bg-slate-900 rounded-2xl border border-emerald-700 overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-800 text-emerald-500 text-xs uppercase">
+                    <tr><th class="p-4">Date</th><th class="p-4">Room No</th><th class="p-4">Qty Added</th></tr>
+                </thead>
+                <tbody id="historyTable" class="divide-y divide-slate-800"></tbody>
+            </table>
+        </div>
+    </div>
+
     <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 mb-8">
         <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <input id="cat" placeholder="Category" class="bg-slate-800 p-3 rounded border border-slate-700">
@@ -21,7 +33,7 @@
             <input id="used" type="number" placeholder="Used Qty" class="bg-slate-800 p-3 rounded border border-slate-700">
             <input id="room" placeholder="Room No" class="bg-slate-800 p-3 rounded border border-slate-700">
         </div>
-        <button id="mainBtn" onclick="processData()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 py-3 rounded font-bold transition">Add Item</button>
+        <button id="mainBtn" onclick="processData()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 py-3 rounded font-bold transition">Add/Update Item</button>
     </div>
 
     <div class="bg-slate-900 rounded-2xl border border-slate-700 overflow-x-auto">
@@ -35,7 +47,6 @@
 </div>
 
 <script>
-    // আপনার কনফিগ এখানে বসান
     const firebaseConfig = {
         apiKey: "AIzaSyAO0KQ1SiBbSn2zbEFCJB12G_gPyIkd4KQ",
         authDomain: "livework-ab49e.firebaseapp.com",
@@ -48,18 +59,34 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let editKey = null;
+    // হিস্টোরি লোড করা (নতুন এন্ট্রি উপরে আসবে)
+    db.ref('usage_history').orderByChild('timestamp').on('value', snapshot => {
+        const tbody = document.getElementById('historyTable');
+        tbody.innerHTML = '';
+        const historyData = [];
+        snapshot.forEach(child => { historyData.unshift(child.val()); });
+        
+        historyData.forEach(item => {
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-800">
+                    <td class="p-4">${item.date}</td>
+                    <td class="p-4 font-bold text-white">${item.room}</td>
+                    <td class="p-4 text-emerald-400 font-bold">${item.qty}</td>
+                </tr>`;
+        });
+    });
 
+    // ইনভেন্টরি লোড করা
     db.ref('inventory').on('value', snapshot => {
         const tbody = document.getElementById('adminTable');
         tbody.innerHTML = '';
         snapshot.forEach(child => {
             const d = child.val();
-            const balance = d.total - d.used; // অটো ব্যালেন্স হিসাব
+            const balance = d.total - d.used;
             tbody.innerHTML += `
                 <tr class="hover:bg-slate-800/50">
                     <td class="p-4">${d.category}</td>
-                    <td class="p-4 font-semibold">${d.description}</td>
+                    <td class="p-4">${d.description}</td>
                     <td class="p-4">${d.total}</td>
                     <td class="p-4">${d.used}</td>
                     <td class="p-4 font-bold text-green-400">${balance}</td>
@@ -80,15 +107,12 @@
             used: parseInt(document.getElementById('used').value),
             room: document.getElementById('room').value
         };
-        
-        if (editKey) {
-            db.ref('inventory/' + editKey).update(data);
-        } else {
-            db.ref('inventory').push(data);
-        }
+        if(editKey) db.ref('inventory/'+editKey).update(data);
+        else db.ref('inventory').push(data);
         location.reload();
     }
 
+    // ... আগের Edit এবং Delete ফাংশন এখানে থাকবে ...
     function prepareEdit(key, cat, desc, total, used, room) {
         editKey = key;
         document.getElementById('cat').value = cat;
@@ -99,7 +123,7 @@
         document.getElementById('mainBtn').innerText = "Update Item";
     }
 
-    function deleteItem(key) { if(confirm('Delete this item?')) db.ref('inventory/' + key).remove(); }
+    function deleteItem(key) { if(confirm('Delete?')) db.ref('inventory/'+key).remove(); }
 </script>
 </body>
 </html>
