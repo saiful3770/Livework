@@ -11,14 +11,36 @@
 <body class="bg-slate-950 text-slate-200 p-4">
 
 <div class="max-w-6xl mx-auto">
+    <!-- TEXT BANNER (PHOTO OPTION REMOVED) -->
+    <div class="text-center mb-8">
+        <div class="bg-gradient-to-r from-amber-800 via-yellow-700 to-amber-800 p-6 rounded-2xl shadow-2xl border border-amber-500">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-white tracking-wider drop-shadow-lg">AL MANZIL HOTEL</h1>
+            <p class="text-xl md:text-2xl text-yellow-200 font-semibold mt-2 tracking-wide">🇧🇭 BAHRAIN 🇧🇭</p>
+        </div>
+    </div>
+
     <h1 class="text-3xl font-bold text-blue-500 mb-8 text-center uppercase">Maintenance Store Inventory</h1>
     
+    <!-- SAVED DATE FILES SECTION -->
+    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 mb-6">
+        <div class="flex flex-wrap justify-between items-center gap-3">
+            <div>
+                <h2 class="text-md font-bold text-yellow-400 flex items-center gap-2">
+                    📁 Saved Date Files (Click to load report)
+                </h2>
+                <div id="dateFilesContainer" class="flex flex-wrap gap-2 mt-2"></div>
+            </div>
+            <button id="showAllRecordsBtn" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-lg font-bold text-sm shadow">
+                📂 Show All Records
+            </button>
+        </div>
+    </div>
+
     <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
         <div class="flex flex-col w-full sm:w-auto">
-            <label class="text-xs text-slate-400 mb-1 font-bold">তারিখটি বেছে নিন (পুরানো ডেটা চেক করার জন্য):</label>
+            <label class="text-xs text-slate-400 mb-1 font-bold">Select a date (to check old data):</label>
             <input type="date" id="selectReportDate" class="bg-slate-800 text-white p-3 rounded-xl border border-slate-600 font-bold focus:outline-none focus:border-blue-500">
         </div>
-        
         <button onclick="shareSelectedDateOnWhatsApp()" class="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-xl font-black text-lg transition flex items-center justify-center gap-2 shadow-2xl border border-green-400 mt-auto">
             💬 SHARE ON WHATSAPP
         </button>
@@ -27,7 +49,13 @@
     <div class="bg-slate-900 rounded-2xl border border-slate-700 overflow-x-auto mb-10 p-2">
         <table class="w-full text-left">
             <thead class="bg-blue-900 text-white text-xs uppercase">
-                <tr><th class="p-4">Date</th><th class="p-4">Item</th><th class="p-4">Room</th><th class="p-4">Used Qty</th></tr>
+                <tr>
+                    <th class="p-4">Date</th>
+                    <th class="p-4">Item</th>
+                    <th class="p-4">Room</th>
+                    <th class="p-4">Used Qty</th>
+                    <th class="p-4">Actions</th>
+                </tr>
             </thead>
             <tbody id="historyTable" class="divide-y divide-slate-800"></tbody>
         </table>
@@ -52,6 +80,23 @@
     </table>
 </div>
 
+<!-- EDIT MODAL for history records -->
+<div id="editHistoryModal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+    <div class="bg-slate-800 rounded-2xl p-6 w-96 border border-slate-600 shadow-2xl">
+        <h3 class="text-xl font-bold text-white mb-4">✏️ Edit Usage Record</h3>
+        <div class="space-y-3">
+            <input type="date" id="editDate" class="w-full bg-slate-700 p-2 rounded border border-slate-500 text-white">
+            <input type="text" id="editItem" placeholder="Item Name" class="w-full bg-slate-700 p-2 rounded border border-slate-500 text-white">
+            <input type="text" id="editRoom" placeholder="Room No" class="w-full bg-slate-700 p-2 rounded border border-slate-500 text-white">
+            <input type="number" id="editQty" placeholder="Quantity" class="w-full bg-slate-700 p-2 rounded border border-slate-500 text-white">
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+            <button onclick="closeEditModal()" class="bg-slate-600 px-4 py-2 rounded-lg">Cancel</button>
+            <button id="saveEditBtn" class="bg-blue-600 px-4 py-2 rounded-lg font-bold">Save Changes</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyAO0KQ1SiBbSn2zbEFCJB12G_gPyIkd4KQ",
@@ -65,42 +110,116 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     
-    let allHistoryData = [];
-    let editKey = null;
+    let allHistoryData = [];      // array of {key, val}
+    let editKey = null;           // for inventory edit
+    let currentEditHistoryKey = null;
+    let currentDisplayMode = "date"; // "date" or "all"
 
-    // আজকের তারিখ ক্যালেন্ডার বক্সে অটোমেটিক সেট করা
+    const datePicker = document.getElementById('selectReportDate');
+    const showAllBtn = document.getElementById('showAllRecordsBtn');
+    const historyTbody = document.getElementById('historyTable');
+
     window.onload = function() {
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         const todayStr = `${year}-${month}-${day}`;
-        const dateInput = document.getElementById('selectReportDate');
-        if(dateInput) dateInput.value = todayStr;
+        datePicker.value = todayStr;
+        
+        datePicker.addEventListener('change', function() {
+            if (currentDisplayMode === "all") {
+                currentDisplayMode = "date";
+            }
+            filterHistoryByDate(datePicker.value);
+        });
+        
+        showAllBtn.addEventListener('click', () => {
+            currentDisplayMode = "all";
+            renderHistoryTable(allHistoryData);
+        });
+        
+        document.getElementById('saveEditBtn').addEventListener('click', () => {
+            saveHistoryEdit();
+        });
     };
 
-    // Load History
-    db.ref('usage_history').orderByChild('timestamp').on('value', snapshot => {
-        const tbody = document.getElementById('historyTable');
-        tbody.innerHTML = '';
-        allHistoryData = [];
-        
-        snapshot.forEach(child => { 
-            allHistoryData.unshift(child.val()); 
-        });
+    function filterHistoryByDate(date) {
+        const filtered = allHistoryData.filter(rec => rec.val.date === date);
+        renderHistoryTable(filtered);
+    }
 
-        allHistoryData.forEach(item => {
-            tbody.innerHTML += `<tr class="bg-slate-800/50"><td class="p-4">${item.date || ''}</td><td class="p-4 font-semibold text-white">${item.item || 'N/A'}</td><td class="p-4 text-blue-400 font-bold">${item.room || ''}</td><td class="p-4 font-bold text-emerald-400">${item.qty || 0}</td></tr>`;
+    function renderHistoryTable(dataArray) {
+        historyTbody.innerHTML = '';
+        dataArray.forEach(record => {
+            const item = record.val;
+            const key = record.key;
+            historyTbody.innerHTML += `<tr class="bg-slate-800/50">
+                <td class="p-4">${item.date || ''}</td>
+                <td class="p-4 font-semibold text-white">${item.item || 'N/A'}</td>
+                <td class="p-4 text-blue-400 font-bold">${item.room || ''}</td>
+                <td class="p-4 font-bold text-emerald-400">${item.qty || 0}</td>
+                <td class="p-4">
+                    <button onclick="openEditModal('${key}')" class="text-yellow-400 hover:text-yellow-300 font-bold text-sm">✏️ Edit</button>
+                </td>
+            </tr>`;
         });
+    }
+
+    db.ref('usage_history').orderByChild('timestamp').on('value', snapshot => {
+        allHistoryData = [];
+        snapshot.forEach(child => {
+            allHistoryData.push({ key: child.key, val: child.val() });
+        });
+        allHistoryData.reverse();
+        generateDateFileButtons();
+        if (currentDisplayMode === "all") {
+            renderHistoryTable(allHistoryData);
+        } else {
+            filterHistoryByDate(datePicker.value);
+        }
     });
 
-    // Load Inventory
+    function generateDateFileButtons() {
+        const container = document.getElementById('dateFilesContainer');
+        if (!container) return;
+        const uniqueDates = [...new Set(allHistoryData.map(rec => rec.val.date).filter(d => d))];
+        uniqueDates.sort().reverse();
+        container.innerHTML = '';
+        if (uniqueDates.length === 0) {
+            container.innerHTML = '<span class="text-slate-400 text-sm">No report files yet.</span>';
+            return;
+        }
+        uniqueDates.forEach(date => {
+            const btn = document.createElement('button');
+            btn.textContent = `📄 ${date}`;
+            btn.className = 'bg-slate-700 hover:bg-blue-600 text-sm px-3 py-1.5 rounded-lg transition font-mono';
+            btn.onclick = () => {
+                datePicker.value = date;
+                currentDisplayMode = "date";
+                filterHistoryByDate(date);
+            };
+            container.appendChild(btn);
+        });
+    }
+
     db.ref('inventory').on('value', snapshot => {
         const tbody = document.getElementById('adminTable');
         tbody.innerHTML = '';
         snapshot.forEach(child => {
             const d = child.val();
-            tbody.innerHTML += `<tr class="hover:bg-slate-800/50"><td class="p-4">${d.category}</td><td class="p-4 font-semibold">${d.description}</td><td class="p-4">${d.total}</td><td class="p-4">${d.used}</td><td class="p-4 font-bold text-green-400">${d.total - d.used}</td><td class="p-4">${d.room}</td><td class="p-4 flex gap-3"><button onclick="prepareEdit('${child.key}', '${d.category}', '${d.description}', ${d.total}, ${d.used}, '${d.room}')" class="text-blue-400 font-bold">Edit</button><button onclick="deleteItem('${child.key}')" class="text-red-500 font-bold">Del</button></td></tr>`;
+            tbody.innerHTML += `<tr class="hover:bg-slate-800/50">
+                <td class="p-4">${d.category}</td>
+                <td class="p-4 font-semibold">${d.description}</td>
+                <td class="p-4">${d.total}</td>
+                <td class="p-4">${d.used}</td>
+                <td class="p-4 font-bold text-green-400">${d.total - d.used}</td>
+                <td class="p-4">${d.room}</td>
+                <td class="p-4 flex gap-3">
+                    <button onclick="prepareEdit('${child.key}', '${d.category}', '${d.description}', ${d.total}, ${d.used}, '${d.room}')" class="text-blue-400 font-bold">Edit</button>
+                    <button onclick="deleteItem('${child.key}')" class="text-red-500 font-bold">Del</button>
+                </td>
+            </tr>`;
         });
     });
 
@@ -112,13 +231,56 @@
 
     function prepareEdit(key, cat, desc, total, used, room) {
         editKey = key;
-        document.getElementById('cat').value = cat; document.getElementById('desc').value = desc; document.getElementById('total').value = total; document.getElementById('used').value = used; document.getElementById('room').value = room;
+        document.getElementById('cat').value = cat;
+        document.getElementById('desc').value = desc;
+        document.getElementById('total').value = total;
+        document.getElementById('used').value = used;
+        document.getElementById('room').value = room;
         document.getElementById('mainBtn').innerText = "Update Item";
     }
 
     function deleteItem(key) { if(confirm('Delete?')) db.ref('inventory/' + key).remove(); }
 
-    // Helper: pad string with spaces to reach target length
+    function openEditModal(historyKey) {
+        const record = allHistoryData.find(r => r.key === historyKey);
+        if (!record) return;
+        currentEditHistoryKey = historyKey;
+        const data = record.val;
+        document.getElementById('editDate').value = data.date || '';
+        document.getElementById('editItem').value = data.item || '';
+        document.getElementById('editRoom').value = data.room || '';
+        document.getElementById('editQty').value = data.qty || 0;
+        document.getElementById('editHistoryModal').classList.remove('hidden');
+        document.getElementById('editHistoryModal').classList.add('flex');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editHistoryModal').classList.add('hidden');
+        document.getElementById('editHistoryModal').classList.remove('flex');
+        currentEditHistoryKey = null;
+    }
+
+    function saveHistoryEdit() {
+        if (!currentEditHistoryKey) return;
+        const newDate = document.getElementById('editDate').value;
+        const newItem = document.getElementById('editItem').value;
+        const newRoom = document.getElementById('editRoom').value;
+        const newQty = parseInt(document.getElementById('editQty').value) || 0;
+        if (!newDate) {
+            alert("Date is required.");
+            return;
+        }
+        const updates = { date: newDate, item: newItem, room: newRoom, qty: newQty };
+        db.ref('usage_history/' + currentEditHistoryKey).update(updates).then(() => {
+            closeEditModal();
+            if (currentDisplayMode === "all") {
+                // auto updates via listener
+            } else {
+                filterHistoryByDate(datePicker.value);
+            }
+        }).catch(err => alert("Update failed: " + err));
+    }
+
     function padEndSpace(str, targetLength) {
         let currentStr = String(str);
         while (currentStr.length < targetLength) {
@@ -127,42 +289,33 @@
         return currentStr;
     }
 
-    // Final WhatsApp sharing function with monospace block and Excel-like alignment
     function shareSelectedDateOnWhatsApp() {
-        const selectedDate = document.getElementById('selectReportDate').value;
-
+        const selectedDate = datePicker.value;
         if (!selectedDate) {
-            alert("অনুগ্রহ করে একটি তারিখ সিলেক্ট করুন!");
+            alert("Please select a date!");
             return;
         }
-
-        const filteredData = allHistoryData.filter(item => item.date === selectedDate);
-
+        const filteredData = allHistoryData.filter(rec => rec.val.date === selectedDate).map(rec => rec.val);
         if (filteredData.length === 0) {
-            alert(selectedDate + " তারিখে কোনো ডেটা পাওয়া যায়নি!");
+            alert("No data found for date: " + selectedDate);
             return;
         }
-
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         const currentDateStr = `${year}-${month}-${day}`;
-
         let message = `MAINTENANCE USED ITEMS\n\n`;
         message += `DATE      ${currentDateStr}\n\n`;
         message += `\`\`\`\n`;
         message += `${padEndSpace("ROOM NO", 12)}${padEndSpace("ITEMS", 15)}QTY\n`;
-        
         filteredData.forEach(item => {
             let roomPart = padEndSpace(item.room || 'N/A', 12);
             let itemPart = padEndSpace(item.item || 'N/A', 15);
             let qtyPart = `${item.qty || 0}`;
             message += `${roomPart}${itemPart}${qtyPart}\n`;
         });
-        
         message += `\`\`\``;
-        
         const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
         window.location.href = whatsappUrl;
     }
